@@ -1,4 +1,3 @@
-use base64::{Engine as _, engine::general_purpose};
 use std::fmt::Write;
 
 /// Generates a theoretical PNG-ZIP polyglot in memory.

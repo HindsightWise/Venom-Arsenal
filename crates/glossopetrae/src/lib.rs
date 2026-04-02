@@ -64,7 +64,7 @@ fn derive_rolling_key(master_seed: &str, epoch_offset: i64) -> [u8; 32] {
 
 /// Derives a 32-byte AES key statically for permanent Data-At-Rest storage.
 fn derive_key_from_epoch(master_seed: &str, epoch: i64) -> [u8; 32] {
-    let mut mac = HmacSha256::new_from_slice(master_seed.as_bytes()).expect("HMAC can take key of any size");
+    let mut mac = <HmacSha256 as Mac>::new_from_slice(master_seed.as_bytes()).expect("HMAC can take key of any size");
     mac.update(&epoch.to_be_bytes());
     
     let result = mac.finalize();
