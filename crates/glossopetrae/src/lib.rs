@@ -59,8 +59,13 @@ fn derive_rolling_key(master_seed: &str, epoch_offset: i64) -> [u8; 32] {
     // 37 minutes = 2220 seconds
     let current_window = (now_secs as i64 / 2220) + epoch_offset;
     
+    derive_key_from_epoch(master_seed, current_window)
+}
+
+/// Derives a 32-byte AES key statically for permanent Data-At-Rest storage.
+fn derive_key_from_epoch(master_seed: &str, epoch: i64) -> [u8; 32] {
     let mut mac = HmacSha256::new_from_slice(master_seed.as_bytes()).expect("HMAC can take key of any size");
-    mac.update(&current_window.to_be_bytes());
+    mac.update(&epoch.to_be_bytes());
     
     let result = mac.finalize();
     let mut key = [0u8; 32];
@@ -130,4 +135,53 @@ pub fn decode_message(ciphertext_str: &str, master_seed: &str, dialect: &str) ->
     }
 
     Err("AES Decryption failed. The time-epoch rotated too far, or the seed is completely incorrect.".to_string())
+}
+
+/// Permenant encoding specifically for Data-At-Rest (Databases) using a static epoch to prevent expiration.
+pub fn encode_memory_vault(payload: &str, master_seed: &str, dialect: &str) -> Result<String, String> {
+    let key_bytes = derive_key_from_epoch(master_seed, 0); // Static epoch 0 guarantees permanence
+    let cipher = Aes256Gcm::new(&key_bytes.into());
+
+    let mut nonce_bytes = [0u8; 12];
+    rand::thread_rng().fill_bytes(&mut nonce_bytes);
+    let nonce = Nonce::from_slice(&nonce_bytes);
+
+    let ciphertext = cipher.encrypt(nonce, payload.as_bytes())
+        .map_err(|e| format!("AES Encryption failed: {:?}", e))?;
+
+    let mut final_bytes = nonce_bytes.to_vec();
+    final_bytes.extend(ciphertext);
+
+    let wordlist = generate_dictionary(dialect);
+    
+    let encrypted_sentence: Vec<String> = final_bytes.into_iter()
+        .map(|b| wordlist[b as usize].clone())
+        .collect();
+
+    Ok(encrypted_sentence.join(" "))
+}
+
+/// Permenant decoding specifically for Data-At-Rest (Databases) using a static epoch.
+pub fn decode_memory_vault(ciphertext_str: &str, master_seed: &str, dialect: &str) -> Result<String, String> {
+    let wordlist = generate_dictionary(dialect);
+    let words: Vec<&str> = ciphertext_str.split_whitespace().collect();
+    let mut decoded_bytes = Vec::with_capacity(words.len());
+    
+    for word in words {
+        if let Some(pos) = wordlist.iter().position(|r| r == word) { decoded_bytes.push(pos as u8); } 
+        else { return Err("Phonological Corruption".to_string()); }
+    }
+
+    if decoded_bytes.len() < 12 { return Err("Payload too short".to_string()); }
+
+    let (nonce_bytes, ciphertext) = decoded_bytes.split_at(12);
+    let nonce = Nonce::from_slice(nonce_bytes);
+    let key_bytes = derive_key_from_epoch(master_seed, 0); // Static epoch 0
+    let cipher = Aes256Gcm::new(&key_bytes.into());
+    
+    if let Ok(plaintext_bytes) = cipher.decrypt(nonce, ciphertext) {
+        if let Ok(plaintext) = String::from_utf8(plaintext_bytes) { return Ok(plaintext); }
+    }
+
+    Err("AES Decryption failed. Database key invalid.".to_string())
 }
