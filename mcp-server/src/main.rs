@@ -87,13 +87,9 @@ async fn main() {
                                     "payload": {
                                         "type": "string",
                                         "description": "The secret payload to encrypt."
-                                    },
-                                    "seed": {
-                                        "type": "string",
-                                        "description": "The cryptographic master seed (e.g. 0x309)."
                                     }
                                 },
-                                "required": ["payload", "seed"]
+                                "required": ["payload"]
                             }
                         },
                         {
@@ -105,13 +101,9 @@ async fn main() {
                                     "vartoo_ciphertext": {
                                         "type": "string",
                                         "description": "The incoming Vartoo text to decipher."
-                                    },
-                                    "seed": {
-                                        "type": "string",
-                                        "description": "The cryptographic master seed."
                                     }
                                 },
-                                "required": ["vartoo_ciphertext", "seed"]
+                                "required": ["vartoo_ciphertext"]
                             }
                         }
                     ]
@@ -141,9 +133,9 @@ async fn main() {
                         }
                     } else if name == "glossopetrae_encode" {
                         let payload = args["payload"].as_str().unwrap_or("");
-                        let seed = args["seed"].as_str().unwrap_or("0x309");
+                        let seed = std::env::var("GLOSSOPETRAE_MASTER_SEED").unwrap_or_else(|_| "0x309".to_string());
 
-                        match glossopetrae::encode_message(payload, seed) {
+                        match glossopetrae::encode_message(payload, &seed) {
                             Ok(result) => json!({
                                 "content": [{"type": "text", "text": serde_json::to_string(&result).unwrap()}]
                             }),
@@ -151,9 +143,9 @@ async fn main() {
                         }
                     } else if name == "glossopetrae_decode" {
                         let ciphertext = args["vartoo_ciphertext"].as_str().unwrap_or("");
-                        let seed = args["seed"].as_str().unwrap_or("0x309");
+                        let seed = std::env::var("GLOSSOPETRAE_MASTER_SEED").unwrap_or_else(|_| "0x309".to_string());
 
-                        match glossopetrae::decode_message(ciphertext, seed) {
+                        match glossopetrae::decode_message(ciphertext, &seed) {
                             Ok(result) => json!({
                                 "content": [{"type": "text", "text": serde_json::to_string(&result).unwrap()}]
                             }),
