@@ -12,23 +12,41 @@ type HmacSha256 = Hmac<Sha256>;
 const CONSONANTS: &[&str] = &["t", "p", "k", "n", "m", "s", "h", "v", "l", "r", "w", "sh", "ch", "ny"];
 const VOWELS: &[&str] = &["a", "e", "i", "o", "u"];
 
-/// Mathematically generate exactly 256 unique, valid Vartoo words based strictly on CV phonotactics.
-pub fn generate_vartoo_wordlist() -> Vec<String> {
-    let mut syllables = Vec::new();
-    for &c in CONSONANTS {
-        for &v in VOWELS {
-            syllables.push(format!("{}{}", c, v));
-        }
-    }
-    
-    // syllables.len() = 14 * 5 = 70.
-    // 70 * 70 = 4900 possible CVCV words. We take the first 256.
+const RUNES: &[&str] = &["ᚠ", "ᚢ", "ᚦ", "ᚨ", "ᚱ", "ᚲ", "ᚷ", "ᚹ", "ᚺ", "ᚾ", "ᛁ", "ᛃ", "ᛇ", "ᛈ", "ᛉ", "ᛊ"];
+const ALCHEMICAL: &[&str] = &["☿", "♀", "♁", "♂", "♃", "♄", "♅", "♆", "♇", "🜔", "🜕", "🜖", "🜗", "🜘", "🜙", "🜚"];
+const HIEROGLYPHS: &[&str] = &["𓀀", "𓀁", "𓀂", "𓀃", "𓀄", "𓀅", "𓀆", "𓀇", "𓀈", "𓀉", "𓀊", "𓀋", "𓀌", "𓀍", "𓀎", "𓀏"];
+
+/// Generates exactly 256 unique words based on the chosen occult dialect matrix.
+pub fn generate_dictionary(dialect: &str) -> Vec<String> {
     let mut words = Vec::new();
-    for s1 in &syllables {
-        for s2 in &syllables {
-            words.push(format!("{}{}", s1, s2));
-            if words.len() == 256 {
-                return words;
+    
+    match dialect.to_lowercase().as_str() {
+        "runic" => {
+            for c1 in RUNES {
+                for c2 in RUNES { words.push(format!("{}{}", c1, c2)); }
+            }
+        },
+        "alchemical" => {
+            for c1 in ALCHEMICAL {
+                for c2 in ALCHEMICAL { words.push(format!("{}{}", c1, c2)); }
+            }
+        },
+        "hieroglyphics" => {
+            for c1 in HIEROGLYPHS {
+                for c2 in HIEROGLYPHS { words.push(format!("{}{}", c1, c2)); }
+            }
+        },
+        _ => {
+            // Default to Vartoo CV syllables
+            let mut syllables = Vec::new();
+            for &c in CONSONANTS {
+                for &v in VOWELS { syllables.push(format!("{}{}", c, v)); }
+            }
+            for s1 in &syllables {
+                for s2 in &syllables {
+                    words.push(format!("{}{}", s1, s2));
+                    if words.len() == 256 { return words; }
+                }
             }
         }
     }
@@ -50,8 +68,8 @@ fn derive_rolling_key(master_seed: &str, epoch_offset: i64) -> [u8; 32] {
     key
 }
 
-/// Encodes raw English into Cryptographic Glossopetrae (Vartoo Dialect)
-pub fn encode_message(payload: &str, master_seed: &str) -> Result<String, String> {
+/// Encodes raw English into Cryptographic Glossopetrae dialects
+pub fn encode_message(payload: &str, master_seed: &str, dialect: &str) -> Result<String, String> {
     let key_bytes = derive_rolling_key(master_seed, 0);
     let cipher = Aes256Gcm::new(&key_bytes.into());
 
@@ -66,22 +84,22 @@ pub fn encode_message(payload: &str, master_seed: &str) -> Result<String, String
     let mut final_bytes = nonce_bytes.to_vec();
     final_bytes.extend(ciphertext);
 
-    let wordlist = generate_vartoo_wordlist();
+    let wordlist = generate_dictionary(dialect);
     
-    // Map bytes exactly to Vartoo words
-    let vartoo_sentence: Vec<String> = final_bytes.into_iter()
+    // Map bytes exactly to words
+    let encrypted_sentence: Vec<String> = final_bytes.into_iter()
         .map(|b| wordlist[b as usize].clone())
         .collect();
 
-    Ok(vartoo_sentence.join(" "))
+    Ok(encrypted_sentence.join(" "))
 }
 
-/// Decodes Cryptographic Glossopetrae back into English
-pub fn decode_message(vartoo_ciphertext: &str, master_seed: &str) -> Result<String, String> {
-    let wordlist = generate_vartoo_wordlist();
+/// Decodes Cryptographic Glossopetrae dialects back into English
+pub fn decode_message(ciphertext_str: &str, master_seed: &str, dialect: &str) -> Result<String, String> {
+    let wordlist = generate_dictionary(dialect);
     
-    // Reverse lookup Vartoo words to bytes
-    let words: Vec<&str> = vartoo_ciphertext.split_whitespace().collect();
+    // Reverse lookup words to bytes
+    let words: Vec<&str> = ciphertext_str.split_whitespace().collect();
     let mut decoded_bytes = Vec::with_capacity(words.len());
     
     for word in words {
