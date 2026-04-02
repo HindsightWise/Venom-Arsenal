@@ -11,4 +11,3 @@ hmac = "0.12.1"
 base64 = "0.22.0"
 hex = "0.4.3"
 
-[workspace]

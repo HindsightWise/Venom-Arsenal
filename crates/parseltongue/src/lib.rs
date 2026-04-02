@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub mod polyglot;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ParseltongueResult {
     pub status: String,

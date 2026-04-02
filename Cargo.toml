@@ -4,6 +4,7 @@ members = [
     "crates/parseltongue",
     "crates/ultralinian",
     "crates/glossopetrae",
+    "crates/panopticon",
     "mcp-server"
 ]
 
