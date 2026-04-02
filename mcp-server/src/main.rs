@@ -77,6 +77,42 @@ async fn main() {
                                 },
                                 "required": ["prompt"]
                             }
+                        },
+                        {
+                            "name": "glossopetrae_encode",
+                            "description": "CRYPTOGRAPHIC GLOSSOPETRAE: Mathematically encrypt a sensitive string payload into the covert Vartoo dialect. Uses AES-256-GCM under the hood with a Time-Based HMAC dialect rotation.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "payload": {
+                                        "type": "string",
+                                        "description": "The secret payload to encrypt."
+                                    },
+                                    "seed": {
+                                        "type": "string",
+                                        "description": "The cryptographic master seed (e.g. 0x309)."
+                                    }
+                                },
+                                "required": ["payload", "seed"]
+                            }
+                        },
+                        {
+                            "name": "glossopetrae_decode",
+                            "description": "CRYPTOGRAPHIC GLOSSOPETRAE: Mathematically decrypt a received Vartoo dialect message back into strict English. Will throw a phonological corruption error if the language is hallucinated or the seed is wrong.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "vartoo_ciphertext": {
+                                        "type": "string",
+                                        "description": "The incoming Vartoo text to decipher."
+                                    },
+                                    "seed": {
+                                        "type": "string",
+                                        "description": "The cryptographic master seed."
+                                    }
+                                },
+                                "required": ["vartoo_ciphertext", "seed"]
+                            }
                         }
                     ]
                 }),
@@ -98,6 +134,26 @@ async fn main() {
                     } else if name == "ultralinian_consensus" {
                         let prompt = args["prompt"].as_str().unwrap_or("");
                         match ultralinian::run_consensus(prompt).await {
+                            Ok(result) => json!({
+                                "content": [{"type": "text", "text": serde_json::to_string(&result).unwrap()}]
+                            }),
+                            Err(e) => json!({ "isError": true, "content": [{"type": "text", "text": e}] })
+                        }
+                    } else if name == "glossopetrae_encode" {
+                        let payload = args["payload"].as_str().unwrap_or("");
+                        let seed = args["seed"].as_str().unwrap_or("0x309");
+
+                        match glossopetrae::encode_message(payload, seed) {
+                            Ok(result) => json!({
+                                "content": [{"type": "text", "text": serde_json::to_string(&result).unwrap()}]
+                            }),
+                            Err(e) => json!({ "isError": true, "content": [{"type": "text", "text": e}] })
+                        }
+                    } else if name == "glossopetrae_decode" {
+                        let ciphertext = args["vartoo_ciphertext"].as_str().unwrap_or("");
+                        let seed = args["seed"].as_str().unwrap_or("0x309");
+
+                        match glossopetrae::decode_message(ciphertext, seed) {
                             Ok(result) => json!({
                                 "content": [{"type": "text", "text": serde_json::to_string(&result).unwrap()}]
                             }),
